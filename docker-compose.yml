@@ -1,0 +1,123 @@
+version: "3.8"
+
+# ============================================================
+# Flood Early Warning System — Docker Compose
+# ============================================================
+# Services:
+#   - elasticsearch   : Geospatial indexing & search (port 9200)
+#   - kibana          : Dashboards & Dev Tools (port 5601)
+#   - logstash        : Data ingestion pipelines (port 5044)
+#   - mongodb         : User data & historical records (port 27017)
+# ============================================================
+
+services:
+  # ----------------------------------------------------------
+  # Elasticsearch
+  # ----------------------------------------------------------
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: flood_elasticsearch
+    environment:
+      - node.name=flood-es-node
+      - cluster.name=flood-cluster
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false  # Disable TLS for local dev
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - flood_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-u", "elastic:${ELASTIC_PASSWORD:-changeme}", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ----------------------------------------------------------
+  # Kibana
+  # ----------------------------------------------------------
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: flood_kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD:-changeme}
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - flood_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5601/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ----------------------------------------------------------
+  # Logstash
+  # ----------------------------------------------------------
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.12.0
+    container_name: flood_logstash
+    environment:
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - ELASTIC_USERNAME=elastic
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+      - OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY}
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+    ports:
+      - "5044:5044"   # Beats input
+      - "9600:9600"   # Logstash API
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - flood_net
+
+  # ----------------------------------------------------------
+  # MongoDB
+  # ----------------------------------------------------------
+  mongodb:
+    image: mongo:7.0
+    container_name: flood_mongodb
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-changeme}
+      - MONGO_INITDB_DATABASE=flood_warning
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - flood_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+# ----------------------------------------------------------
+# Named Volumes
+# ----------------------------------------------------------
+volumes:
+  es_data:
+    driver: local
+  mongo_data:
+    driver: local
+
+# ----------------------------------------------------------
+# Networks
+# ----------------------------------------------------------
+networks:
+  flood_net:
+    driver: bridge

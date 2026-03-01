@@ -1,0 +1,150 @@
+# Elasticsearch — Sample Seed Documents
+# ============================================================
+# Run in Kibana Dev Tools to seed initial data for demo/testing.
+# These represent sensor stations and flood boundaries for the
+# three key regions: Queensland AU, Hat Yai TH, Sumatra ID
+# ============================================================
+
+# ----------------------------------------------------------
+# 1. Sensor Documents (geo_point)
+# ----------------------------------------------------------
+
+POST flood-sensors-2024.01.15/_doc
+{
+  "sensor_id": "QLD-001",
+  "station_name": "Brisbane River Gateway",
+  "location": { "lat": -27.4698, "lon": 153.0251 },
+  "water_level": 2.4,
+  "water_level_unit": "metres",
+  "rainfall_mm": 45.2,
+  "wind_speed_ms": 8.5,
+  "temperature_c": 28.3,
+  "humidity_pct": 85,
+  "risk_level": "medium",
+  "source": "bom_australia",
+  "timestamp": "2024-01-15T06:00:00Z"
+}
+
+POST flood-sensors-2024.01.15/_doc
+{
+  "sensor_id": "QLD-002",
+  "station_name": "Ipswich Flood Gauge",
+  "location": { "lat": -27.6143, "lon": 152.7600 },
+  "water_level": 4.1,
+  "water_level_unit": "metres",
+  "rainfall_mm": 92.1,
+  "wind_speed_ms": 14.2,
+  "temperature_c": 26.1,
+  "humidity_pct": 94,
+  "risk_level": "high",
+  "source": "bom_australia",
+  "timestamp": "2024-01-15T06:00:00Z"
+}
+
+POST flood-sensors-2024.01.15/_doc
+{
+  "sensor_id": "HTY-001",
+  "station_name": "Hat Yai City Centre",
+  "location": { "lat": 7.0086, "lon": 100.4747 },
+  "water_level": 1.8,
+  "water_level_unit": "metres",
+  "rainfall_mm": 130.5,
+  "wind_speed_ms": 5.1,
+  "temperature_c": 31.0,
+  "humidity_pct": 91,
+  "risk_level": "medium",
+  "source": "tmd_thailand",
+  "timestamp": "2024-01-15T06:00:00Z"
+}
+
+POST flood-sensors-2024.01.15/_doc
+{
+  "sensor_id": "SUM-001",
+  "station_name": "Medan River Station",
+  "location": { "lat": 3.5952, "lon": 98.6722 },
+  "water_level": 3.2,
+  "water_level_unit": "metres",
+  "rainfall_mm": 210.8,
+  "wind_speed_ms": 6.7,
+  "temperature_c": 29.5,
+  "humidity_pct": 96,
+  "risk_level": "critical",
+  "source": "bmkg_indonesia",
+  "timestamp": "2024-01-15T06:00:00Z"
+}
+
+# ----------------------------------------------------------
+# 2. Flood Boundary Documents (geo_shape polygon)
+# ----------------------------------------------------------
+
+POST flood-boundaries-2024.01.15/_doc
+{
+  "boundary_id": "BOUND-QLD-001",
+  "region_name": "Brisbane River Flood Zone",
+  "country": "AU",
+  "risk_level": "high",
+  "severity": 7.5,
+  "active": true,
+  "valid_from": "2024-01-15T00:00:00Z",
+  "valid_until": "2024-01-16T00:00:00Z",
+  "flood_boundary": {
+    "type": "Polygon",
+    "coordinates": [[
+      [152.98, -27.42],
+      [153.10, -27.42],
+      [153.10, -27.55],
+      [152.98, -27.55],
+      [152.98, -27.42]
+    ]]
+  },
+  "updated_at": "2024-01-15T06:00:00Z"
+}
+
+POST flood-boundaries-2024.01.15/_doc
+{
+  "boundary_id": "BOUND-HTY-001",
+  "region_name": "Hat Yai Basin Flood Zone",
+  "country": "TH",
+  "risk_level": "medium",
+  "severity": 5.0,
+  "active": true,
+  "valid_from": "2024-01-15T00:00:00Z",
+  "valid_until": "2024-01-16T00:00:00Z",
+  "flood_boundary": {
+    "type": "Polygon",
+    "coordinates": [[
+      [100.42, 6.97],
+      [100.53, 6.97],
+      [100.53, 7.05],
+      [100.42, 7.05],
+      [100.42, 6.97]
+    ]]
+  },
+  "updated_at": "2024-01-15T06:00:00Z"
+}
+
+# ----------------------------------------------------------
+# 3. Sample Prediction Document
+# ----------------------------------------------------------
+
+POST flood-predictions-2024.01.15/_doc
+{
+  "prediction_id": "PRED-QLD-001-H4",
+  "sensor_id": "QLD-001",
+  "location": { "lat": -27.4698, "lon": 153.0251 },
+  "predicted_water_level": 3.6,
+  "predicted_risk_level": "high",
+  "prediction_horizon_hours": 4,
+  "confidence_score": 0.82,
+  "model_version": "v1.0.0",
+  "predicted_for": "2024-01-15T10:00:00Z",
+  "created_at": "2024-01-15T06:00:00Z"
+}
+
+# ----------------------------------------------------------
+# 4. Verify data ingested
+# ----------------------------------------------------------
+
+GET flood-sensors-*/_count
+GET flood-boundaries-*/_count
+GET flood-predictions-*/_count

@@ -1,0 +1,165 @@
+# Elasticsearch Index Templates & Mappings
+# ============================================================
+# Run these commands in Kibana Dev Tools Console
+# (http://localhost:5601/app/dev_tools#/console)
+# or via curl against http://localhost:9200
+# ============================================================
+
+# ----------------------------------------------------------
+# 1. Sensor Data Index Template
+#    Index pattern: flood-sensors-*
+# ----------------------------------------------------------
+
+PUT _index_template/flood-sensors-template
+{
+  "index_patterns": ["flood-sensors-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "refresh_interval": "5s"
+    },
+    "mappings": {
+      "properties": {
+        "sensor_id":    { "type": "keyword" },
+        "station_name": { "type": "text", "fields": { "keyword": { "type": "keyword" } } },
+        "location": {
+          "type": "geo_point"
+          # Format accepted: { "lat": -27.4698, "lon": 153.0251 }
+          # or "lat,lon" string, or [lon, lat] array (GeoJSON order)
+        },
+        "water_level":    { "type": "float" },
+        "water_level_unit": { "type": "keyword" },
+        "rainfall_mm":    { "type": "float" },
+        "wind_speed_ms":  { "type": "float" },
+        "temperature_c":  { "type": "float" },
+        "humidity_pct":   { "type": "float" },
+        "risk_level": {
+          "type": "keyword"
+          # Expected values: "low" | "medium" | "high" | "critical"
+        },
+        "source":       { "type": "keyword" },
+        "timestamp":    { "type": "date" },
+        "ingested_at":  { "type": "date" }
+      }
+    }
+  }
+}
+
+# ----------------------------------------------------------
+# 2. Flood Boundaries Index Template
+#    Index pattern: flood-boundaries-*
+# ----------------------------------------------------------
+
+PUT _index_template/flood-boundaries-template
+{
+  "index_patterns": ["flood-boundaries-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "properties": {
+        "boundary_id":   { "type": "keyword" },
+        "region_name":   { "type": "text", "fields": { "keyword": { "type": "keyword" } } },
+        "country":       { "type": "keyword" },
+        "flood_boundary": {
+          "type": "geo_shape"
+          # Accepts GeoJSON shapes: Polygon, MultiPolygon, etc.
+        },
+        "risk_level":    { "type": "keyword" },
+        "severity":      { "type": "scaled_float", "scaling_factor": 10 },
+        "active":        { "type": "boolean" },
+        "valid_from":    { "type": "date" },
+        "valid_until":   { "type": "date" },
+        "updated_at":    { "type": "date" }
+      }
+    }
+  }
+}
+
+# ----------------------------------------------------------
+# 3. Predictions Index Template
+#    Index pattern: flood-predictions-*
+# ----------------------------------------------------------
+
+PUT _index_template/flood-predictions-template
+{
+  "index_patterns": ["flood-predictions-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "properties": {
+        "prediction_id":      { "type": "keyword" },
+        "sensor_id":          { "type": "keyword" },
+        "location":           { "type": "geo_point" },
+        "predicted_water_level": { "type": "float" },
+        "predicted_risk_level":  { "type": "keyword" },
+        "prediction_horizon_hours": { "type": "integer" },
+        "confidence_score":   { "type": "float" },
+        "model_version":      { "type": "keyword" },
+        "predicted_for":      { "type": "date" },
+        "created_at":         { "type": "date" }
+      }
+    }
+  }
+}
+
+# ----------------------------------------------------------
+# 4. Verification — inspect templates
+# ----------------------------------------------------------
+
+GET _index_template/flood-sensors-template
+GET _index_template/flood-boundaries-template
+GET _index_template/flood-predictions-template
+
+# ----------------------------------------------------------
+# 5. Useful geo queries — paste into Dev Tools to test
+# ----------------------------------------------------------
+
+# 5a. geo_distance — sensors within 50km of Hat Yai
+GET flood-sensors-*/_search
+{
+  "query": {
+    "geo_distance": {
+      "distance": "50km",
+      "location": {
+        "lat": 7.0086,
+        "lon": 100.4747
+      }
+    }
+  }
+}
+
+# 5b. geo_bounding_box — sensors in Queensland bounding box
+GET flood-sensors-*/_search
+{
+  "query": {
+    "geo_bounding_box": {
+      "location": {
+        "top_left":     { "lat": -10.68, "lon": 138.00 },
+        "bottom_right": { "lat": -29.18, "lon": 153.65 }
+      }
+    }
+  }
+}
+
+# 5c. geo_shape intersect — find boundaries overlapping a point
+GET flood-boundaries-*/_search
+{
+  "query": {
+    "geo_shape": {
+      "flood_boundary": {
+        "shape": {
+          "type": "Point",
+          "coordinates": [153.0251, -27.4698]
+        },
+        "relation": "intersects"
+      }
+    }
+  }
+}
