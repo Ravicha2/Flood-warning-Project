@@ -271,6 +271,57 @@ GET flood-sensors-*/_search?size=5&sort=@timestamp:desc
 
 ---
 
+## AWS deployment: using your access key
+
+You have **AWS access keys**; use them only via **environment variables**, never in code or in git.
+
+### 1. Store AWS credentials in env (do not commit)
+
+Add to your **`.env`** (and ensure `.env` is in `.gitignore`):
+
+```bash
+# --- AWS (for deployment) ---
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_REGION=ap-southeast-1
+```
+
+- **AWS_ACCESS_KEY_ID** and **AWS_SECRET_ACCESS_KEY**: from your AWS access key.
+- **AWS_REGION**: e.g. `ap-southeast-1` (Singapore), `us-east-1`, or the region where you deploy.
+
+On the **machine that runs deploy commands** (your laptop or CI), either:
+
+- Export in the shell: `$env:AWS_ACCESS_KEY_ID="AKIA..."; $env:AWS_SECRET_ACCESS_KEY="..."; $env:AWS_REGION="ap-southeast-1"` (PowerShell), or
+- Use the same in `.env` and load them in your app/deploy script (e.g. backend reads them only when connecting to S3 or other AWS services).
+
+### 2. Where the keys are used in this project
+
+| Use case | How |
+|----------|-----|
+| **Elastic Cloud on AWS** | Create deployment at [cloud.elastic.co](https://cloud.elastic.co) or via [AWS Marketplace](https://www.elastic.co/docs/deploy-manage/deploy/elastic-cloud/aws-marketplace). Billing uses your AWS account; you do **not** put AWS keys inside Elastic Cloud. You only need Elastic Cloud credentials (e.g. `ES_HOST`, `ES_USERNAME`, `ES_PASSWORD`) in `.env` for the backend. |
+| **Backend / app on EC2, ECS, or Lambda** | The **server** (EC2/ECS/Lambda) that runs FastAPI or Logstash needs AWS credentials to call AWS APIs (S3, Kinesis, etc.). Set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` in the **environment** of that server (e.g. EC2 instance profile, ECS task definition, or Lambda env vars). Prefer **IAM roles** (no keys on the box) when possible. |
+| **CLI / deploy from your PC** | When you run `aws` CLI or a deploy script from your machine, it reads from `.env` or from `~/.aws/credentials`. Use the same keys only on your machine; never commit them. |
+| **S3 (blue zones, assets)** | Backend or a batch job that reads/writes S3 uses the env vars above (or the IAM role of the EC2/ECS task). |
+| **Kinesis / Lambda (ingestion)** | If you add Kinesis Data Firehose or Lambda to push sensor data into Elasticsearch, the Lambda or Firehose execution role (or env vars you set for a custom Lambda) use AWS credentials. |
+
+### 3. Implementation steps (add to your flow)
+
+1. **`.env` (local / server):** Add `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`. Keep `.env` out of git.
+2. **`.env.example`:** Add placeholders for these (no real values), so the team knows what to set.
+3. **Elastic Cloud on AWS:** Sign up or log in at [cloud.elastic.co](https://cloud.elastic.co); create a deployment (choose AWS and your region). After creation, copy the **Elasticsearch endpoint**, **username**, and **password** into `.env` as `ES_HOST`, `ES_USERNAME`, `ES_PASSWORD`. Your AWS access key is **not** stored in Elastic Cloud; billing is linked to your AWS account via Marketplace or billing settings.
+4. **Backend:** Point `ES_HOST` (and auth) to the Elastic Cloud URL when deploying. If the backend uses S3 or other AWS services, read `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` from the environment at runtime.
+5. **Deploy backend to AWS:** Run FastAPI on EC2, ECS, or Lambda; set env vars (including AWS_* and ES_*) in the task/instance config. Prefer IAM roles for the instance/task so you don’t put keys in config.
+6. **Mobile app:** No AWS keys in the app. It only calls your FastAPI URL (e.g. `https://your-api.example.com`). The backend uses AWS/Elastic credentials server-side.
+
+### 4. Security checklist
+
+- [ ] `.env` is in `.gitignore`; no access key in any committed file.
+- [ ] `.env.example` has placeholders only (e.g. `AWS_ACCESS_KEY_ID=your_key_here`).
+- [ ] Production: prefer IAM roles for EC2/ECS/Lambda instead of long-lived keys in env.
+- [ ] Rotate keys if they were ever committed or shared.
+
+---
+
 ## Buffer and Demo Run-Through (45 min)
 
 - Fix any failing ES queries (check index names, date patterns, field names).
@@ -294,7 +345,7 @@ GET flood-sensors-*/_search?size=5&sort=@timestamp:desc
 ## File Checklist (Implementation)
 
 - [ ] `docker-compose.yml` — no changes needed if already has ES, Kibana, Logstash, MongoDB
-- [ ] `.env` — ELASTIC_PASSWORD, OPENWEATHERMAP_API_KEY, ES_HOST, ES_USERNAME, ES_PASSWORD
+- [ ] `.env` — ELASTIC_PASSWORD, OPENWEATHERMAP_API_KEY, ES_HOST, ES_USERNAME, ES_PASSWORD; **AWS**: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION (for deployment; never commit real keys)
 - [ ] `elasticsearch/index-templates.ndjson` — apply in Dev Tools
 - [ ] `elasticsearch/seed-data.ndjson` — run in Dev Tools
 - [ ] `logstash/pipeline/flood-sensors.conf` — complete filter for weather (and optional TCP sensor)
@@ -305,7 +356,8 @@ GET flood-sensors-*/_search?size=5&sort=@timestamp:desc
 - [ ] `backend/app/routers/predictions.py` — GET /predictions/predictions
 - [ ] `backend/app/routers/evacuation.py` — GET /evacuation/evacuation-routes (or stub)
 - [ ] Mobile app: API client, health, check-location, boundaries on map, predictions, evacuation
+- [ ] **AWS:** `.env.example` includes AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION; use env vars only for deploy and backend–AWS integration (see **AWS deployment: using your access key**)
 
 ---
 
-**End of implementation plan. Focus: Elastic implemented end-to-end and fully used by the mobile app via FastAPI.**
+**End of implementation plan. Focus: Elastic implemented end-to-end and fully used by the mobile app via FastAPI. AWS keys used only via env for deployment and optional S3/Kinesis/Lambda.**
