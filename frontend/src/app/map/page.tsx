@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import FloodMap from '@/components/FloodMap';
 import MapQuickGo from '@/components/MapQuickGo';
 import { api, Boundary, Prediction, RouteResponse } from '@/lib/api';
-import { Layers, AlertCircle } from 'lucide-react';
+import { Layers, AlertCircle, MapPin } from 'lucide-react';
 
 function MapContent() {
   const searchParams = useSearchParams();
@@ -64,11 +64,11 @@ function MapContent() {
     <div className="space-y-4 h-[calc(100vh-140px)] flex flex-col pt-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 glass-panel p-4 rounded-2xl mb-2">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center tracking-tight">
-            <Layers className="w-6 h-6 mr-2 text-blue-600 dark:text-blue-400" />
+          <h1 className="text-2xl font-extrabold text-brand-950 dark:text-white flex items-center tracking-tight">
+            <Layers className="w-6 h-6 mr-2 text-brand-600 dark:text-brand-400" />
             Live Flood Map
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">Real-time boundaries, sensor predictions, and routing.</p>
+          <p className="text-brand-800/80 dark:text-brand-300/80 text-sm mt-1 font-medium">Real-time situational awareness and predictive routing.</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -87,10 +87,13 @@ function MapContent() {
       <div className="flex-1 relative mt-2 rounded-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-800 shadow-2xl">
         {loading && (
           <div className="absolute inset-0 z-10 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md flex items-center justify-center">
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-xl flex items-center space-x-4 border border-slate-200 dark:border-slate-700">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
-              <span className="font-semibold text-slate-700 dark:text-slate-200">Loading Map Data...</span>
+            <div className="glass-panel w-full h-full rounded-2xl flex flex-col items-center justify-center border-brand-200 dark:border-brand-800/50">
+            <div className="relative">
+              <div className="absolute inset-0 bg-brand-400/20 rounded-full blur-xl animate-pulse" />
+              <MapPin className="w-12 h-12 text-brand-400/50 dark:text-brand-600/50 animate-bounce relative z-10" />
             </div>
+            <p className="mt-4 text-brand-600/70 dark:text-brand-400/80 font-medium tracking-widest text-sm uppercase">Initializing Satellites...</p>
+          </div>
           </div>
         )}
         <FloodMap 

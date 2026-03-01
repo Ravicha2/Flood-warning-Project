@@ -14,7 +14,7 @@ export default function MapQuickGo({ onSelect }: MapQuickGoProps) {
       {locations.map((loc) => (
         <button
           key={loc.name}
-          className="bg-white border border-gray-200 text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 px-3 py-1.5 rounded-full text-sm font-medium transition-all shadow-sm"
+          className="bg-brand-50/50 dark:bg-brand-900/30 border border-brand-200 dark:border-brand-700 text-brand-800 dark:text-brand-200 hover:bg-brand-100 dark:hover:bg-brand-800/60 hover:text-brand-900 dark:hover:text-white px-3 py-1.5 rounded-full text-xs font-semibold transition-all shadow-sm"
           onClick={() => onSelect(loc.lat, loc.lon, loc.zoom)}
         >
           {loc.name}

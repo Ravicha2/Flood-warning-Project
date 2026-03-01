@@ -29,8 +29,8 @@ export default function CheckRiskPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="text-center space-y-3 mb-12">
-        <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Check Flood Risk</h1>
-        <p className="text-lg text-slate-600 dark:text-slate-400">Enter coordinates or use your location to instantly evaluate flood risks in your area.</p>
+        <h1 className="text-4xl font-extrabold text-brand-950 dark:text-white tracking-tight">Check Flood Risk</h1>
+        <p className="text-lg text-brand-800/80 dark:text-brand-300/80">Enter coordinates or use your location to instantly evaluate flood risks in your area.</p>
       </div>
 
       <div className="glass-panel rounded-2xl p-1 md:p-2">
@@ -49,38 +49,38 @@ export default function CheckRiskPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {result.water_level_m !== undefined && (
-              <div className="glass-panel p-5 rounded-2xl flex items-start hover-lift">
-                <div className="bg-blue-100 dark:bg-blue-900/50 p-3 rounded-xl mr-4 mt-1 border border-blue-200 dark:border-blue-800 shadow-inner">
-                  <MapPin className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div className="glass-panel p-5 rounded-2xl flex items-start hover-lift shadow-brand-900/5 dark:shadow-brand-500/10">
+                <div className="bg-brand-100 dark:bg-brand-900/50 p-3 rounded-xl mr-4 mt-1 border border-brand-200 dark:border-brand-800 shadow-inner">
+                  <MapPin className="w-6 h-6 text-brand-600 dark:text-brand-400" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Water Level</h4>
-                  <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{result.water_level_m.toFixed(2)}<span className="text-xl text-slate-500 font-medium tracking-normal ml-1">m</span></p>
+                  <h4 className="text-xs font-bold text-brand-600/70 dark:text-brand-400/70 uppercase tracking-widest mb-1">Water Level</h4>
+                  <p className="text-3xl font-extrabold text-brand-950 dark:text-white">{result.water_level_m.toFixed(2)}<span className="text-xl text-brand-600/50 font-medium tracking-normal ml-1">m</span></p>
                 </div>
               </div>
             )}
             
             {result.predicted_flood_time && (
-              <div className="glass-panel p-5 rounded-2xl flex items-start hover-lift">
+              <div className="glass-panel p-5 rounded-2xl flex items-start hover-lift shadow-brand-900/5 dark:shadow-brand-500/10">
                 <div className="bg-orange-100 dark:bg-orange-900/50 p-3 rounded-xl mr-4 mt-1 border border-orange-200 dark:border-orange-800 shadow-inner">
                   <Clock className="w-6 h-6 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Estimated Strike</h4>
-                  <p className="text-xl font-bold text-slate-900 dark:text-white">{new Date(result.predicted_flood_time).toLocaleTimeString()}</p>
+                  <h4 className="text-xs font-bold text-brand-600/70 dark:text-brand-400/70 uppercase tracking-widest mb-1">Estimated Strike</h4>
+                  <p className="text-xl font-bold text-brand-950 dark:text-white">{new Date(result.predicted_flood_time).toLocaleTimeString()}</p>
                 </div>
               </div>
             )}
           </div>
 
           {result.evacuation_route && result.evacuation_route.length > 0 && (
-             <div className="glass-panel p-6 rounded-2xl border-t-4 border-t-indigo-500 shadow-lg relative overflow-hidden">
+             <div className="glass-panel p-6 rounded-2xl border-t-4 border-t-indigo-500 shadow-xl shadow-brand-900/10 relative overflow-hidden mt-8">
                <div className="absolute -right-10 -top-10 bg-indigo-500/10 blur-3xl w-40 h-40 rounded-full" />
-               <h3 className="text-xl font-bold mb-2 flex items-center text-slate-900 dark:text-white">
+               <h3 className="text-xl font-bold mb-2 flex items-center text-brand-950 dark:text-white">
                  <Navigation className="w-6 h-6 mr-2 text-indigo-600 dark:text-indigo-400" />
                  Safe Evacuation Route Found
                </h3>
-               <p className="text-slate-600 dark:text-slate-400 mb-6 text-sm">A secure path avoiding critical flood zones has been calculated and is ready for use.</p>
+               <p className="text-brand-800/80 dark:text-brand-300/80 mb-6 text-sm font-medium">A secure path avoiding critical flood zones has been calculated and is ready for use.</p>
                <Link href={`/map?lat=${result.latitude}&lon=${result.longitude}&route=1`} className="inline-flex items-center px-6 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5">
                  View Interactive Route
                </Link>
