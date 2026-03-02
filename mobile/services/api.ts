@@ -17,6 +17,7 @@ import type {
   EvacuationRouteResponse,
   AssistantAskRequest,
   AssistantAskResponse,
+  EmergencyNumberResponse,
 } from '../types/api';
 
 const API_BASE_KEY = '@flood_warning_api_base_url';
@@ -118,4 +119,11 @@ export async function askAssistant(body: AssistantAskRequest): Promise<Assistant
     method: 'POST',
     body: JSON.stringify(body),
   });
+}
+
+/** GET /assistant/emergency-number — emergency dial number for a location (opens phone dialer) */
+export async function getEmergencyNumber(lat: number, lon: number): Promise<EmergencyNumberResponse> {
+  return request<EmergencyNumberResponse>(
+    `${API_ENDPOINTS.emergencyNumber}?latitude=${lat}&longitude=${lon}`
+  );
 }

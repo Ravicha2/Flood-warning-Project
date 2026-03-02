@@ -1,17 +1,33 @@
 """
-Router — POST /assistant/ask
-Claude-based flood assistant: user message + optional location context → reply.
+Router — POST /assistant/ask, GET /assistant/emergency-number
+Claude-based flood assistant and emergency number by location.
 """
 
 import asyncio
 import logging
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
 from app.services.assistant import ask_claude
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Emergency numbers by ISO country code (fallback when not in a boundary).
+# See https://en.wikipedia.org/wiki/List_of_emergency_telephone_numbers
+EMERGENCY_BY_COUNTRY: dict[str, str] = {
+    "AU": "000",   # Australia
+    "ID": "112",   # Indonesia (unified)
+    "TH": "199",   # Thailand (emergency)
+    "MY": "999",   # Malaysia
+    "US": "911",
+    "GB": "999",
+    "SG": "995",   # Singapore
+    "PH": "911",   # Philippines
+    "VN": "113",   # Vietnam (police)
+    "IN": "112",   # India
+}
+DEFAULT_EMERGENCY = "112"  # International / EU style; works in many countries
 
 
 class AssistantAskRequest(BaseModel):
@@ -22,6 +38,17 @@ class AssistantAskRequest(BaseModel):
 
 class AssistantAskResponse(BaseModel):
     reply: str
+    suggest_emergency_call: bool = Field(
+        default=False,
+        description="True when risk at user location is high or critical; show Call emergency prominently.",
+    )
+    risk_level: str | None = Field(default=None, description="low, medium, high, or critical when location was sent.")
+
+
+class EmergencyNumberResponse(BaseModel):
+    number: str = Field(..., description="Dial string (e.g. 000, 112)")
+    country: str | None = Field(None, description="ISO country code if known")
+    label: str = Field(default="Emergency", description="Short label for UI")
 
 
 @router.post(
@@ -59,7 +86,7 @@ async def assistant_ask(payload: AssistantAskRequest):
             active_boundaries: list[str] = []
             risk_from_boundaries = "low"
             if not isinstance(boundaries_result, Exception):
-                active_boundaries, risk_from_boundaries = boundaries_result
+                active_boundaries, risk_from_boundaries, _ = boundaries_result
             sensor_id: str | None = None
             water_level: float | None = None
             sensor_risk = "low"
@@ -87,4 +114,60 @@ async def assistant_ask(payload: AssistantAskRequest):
             context = {"message": "Could not load location context."}
 
     reply = await ask_claude(payload.message, context)
-    return AssistantAskResponse(reply=reply)
+    suggest = False
+    level: str | None = None
+    if context and context.get("risk_level") in ("high", "critical"):
+        suggest = True
+        level = context.get("risk_level")
+    return AssistantAskResponse(reply=reply, suggest_emergency_call=suggest, risk_level=level)
+
+
+def _country_from_rough_bounds(lat: float, lon: float) -> str | None:
+    """Rough bounding boxes for areas we care about when no boundary hit."""
+    # Australia
+    if -44 <= lat <= -10 and 113 <= lon <= 154:
+        return "AU"
+    # Indonesia (main islands)
+    if -6 <= lat <= 6 and 95 <= lon <= 141:
+        return "ID"
+    # Thailand
+    if 5.5 <= lat <= 21 and 97 <= lon <= 106:
+        return "TH"
+    # Malaysia
+    if 1 <= lat <= 7 and 100 <= lon <= 120:
+        return "MY"
+    return None
+
+
+@router.get(
+    "/emergency-number",
+    response_model=EmergencyNumberResponse,
+    summary="Get emergency dial number for a location",
+)
+async def get_emergency_number(
+    latitude: float = Query(..., ge=-90, le=90),
+    longitude: float = Query(..., ge=-180, le=180),
+):
+    """
+    Returns the emergency phone number for the given coordinates so the app
+    can open the dialer with one tap. Uses flood boundaries (country from
+    overlapping zone) or rough regional bounds, then a static map.
+    """
+    country: str | None = None
+    try:
+        from app.db.elasticsearch import get_es_client
+        from app.routers.location import _query_boundaries
+
+        es = await get_es_client()
+        _, _, country = await _query_boundaries(es, latitude, longitude)
+    except Exception as e:
+        logger.warning("Emergency number: could not get country from boundaries: %s", e)
+    if not country:
+        country = _country_from_rough_bounds(latitude, longitude)
+    number = (EMERGENCY_BY_COUNTRY.get(country) if country else None) or DEFAULT_EMERGENCY
+    label = "Emergency" if not country else f"Emergency ({country})"
+    return EmergencyNumberResponse(number=number, country=country, label=label)
+
+
+# Expose for OpenAPI
+__all__ = ["router", "AssistantAskRequest", "AssistantAskResponse", "EmergencyNumberResponse"]

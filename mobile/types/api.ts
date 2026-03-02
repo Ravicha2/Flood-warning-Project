@@ -88,4 +88,12 @@ export interface AssistantAskRequest {
 
 export interface AssistantAskResponse {
   reply: string;
+  suggest_emergency_call?: boolean;
+  risk_level?: string;
+}
+
+export interface EmergencyNumberResponse {
+  number: string;
+  country: string | null;
+  label: string;
 }

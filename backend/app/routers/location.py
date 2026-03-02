@@ -36,13 +36,13 @@ def _max_risk(*levels: str | None) -> str:
 
 
 # ---------------------------------------------------------------------------
-async def _query_boundaries(es: AsyncElasticsearch, lat: float, lon: float) -> tuple[list[str], str]:
+async def _query_boundaries(es: AsyncElasticsearch, lat: float, lon: float) -> tuple[list[str], str, str | None]:
     """
     Geo-shape intersect query: find all active flood boundaries that contain
     the given point.
 
     Returns:
-        (list_of_boundary_ids_or_names, highest_risk_level_from_boundaries)
+        (list_of_boundary_ids_or_names, highest_risk_level_from_boundaries, country_from_first_hit_or_none)
     """
     query = {
         "bool": {
@@ -67,12 +67,15 @@ async def _query_boundaries(es: AsyncElasticsearch, lat: float, lon: float) -> t
 
     boundary_ids: list[str] = []
     risk_from_boundaries = "low"
+    first_country: str | None = None
     for hit in hits:
         src = hit["_source"]
         boundary_ids.append(src.get("boundary_id") or src.get("region_name", hit["_id"]))
         risk_from_boundaries = _max_risk(risk_from_boundaries, src.get("risk_level"))
+        if first_country is None and src.get("country"):
+            first_country = (src.get("country") or "").strip().upper() or None
 
-    return boundary_ids, risk_from_boundaries
+    return boundary_ids, risk_from_boundaries, first_country
 
 
 async def _query_nearest_sensor(
@@ -203,7 +206,7 @@ async def check_location(
     active_boundaries: list[str] = []
     risk_from_boundaries = "low"
     if not isinstance(boundaries_result, Exception):
-        active_boundaries, risk_from_boundaries = boundaries_result
+        active_boundaries, risk_from_boundaries, _ = boundaries_result
 
     sensor_id: str | None = None
     water_level: float | None = None

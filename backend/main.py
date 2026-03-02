@@ -139,5 +139,6 @@ async def root():
             "predictions": "/predictions/predictions",
             "evacuation":  "/evacuation/evacuation-routes",
             "assistant":   "/assistant/ask",
+            "assistant_emergency": "/assistant/emergency-number",
         },
     }

@@ -1,5 +1,6 @@
 /**
  * Assistant tab — Claude flood bot. Ask a question; optional "use my location" for context.
+ * "Call emergency" opens the phone dialer with the number for the user's area.
  */
 import React, { useState, useCallback } from 'react';
 import {
@@ -14,8 +15,10 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import * as Location from 'expo-location';
-import { askAssistant } from '../../services/api';
+import * as Linking from 'expo-linking';
+import { askAssistant, getEmergencyNumber, checkLocation } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
 import {
   Spacing,
@@ -32,6 +35,71 @@ export default function AssistantScreen() {
   const [reply, setReply] = useState('');
   const [loading, setLoading] = useState(false);
   const [useLocation, setUseLocation] = useState(true);
+  const [emergencyLoading, setEmergencyLoading] = useState(false);
+  /** When set, show "Call emergency now" at top (critical times); use this lat/lon for the number */
+  const [criticalLocation, setCriticalLocation] = useState<{ lat: number; lon: number } | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          const { status } = await Location.getForegroundPermissionsAsync();
+          if (status !== 'granted') return;
+          const loc = await Location.getCurrentPositionAsync({});
+          const res = await checkLocation({
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          });
+          if (!cancelled && (res.risk_level === 'high' || res.risk_level === 'critical')) {
+            setCriticalLocation({ lat: loc.coords.latitude, lon: loc.coords.longitude });
+          } else if (!cancelled) {
+            setCriticalLocation(null);
+          }
+        } catch {
+          if (!cancelled) setCriticalLocation(null);
+        }
+      })();
+      return () => { cancelled = true; };
+    }, [])
+  );
+
+  const callEmergency = useCallback(async (latLon?: { lat: number; lon: number }) => {
+    setEmergencyLoading(true);
+    try {
+      let lat: number;
+      let lon: number;
+      if (latLon) {
+        lat = latLon.lat;
+        lon = latLon.lon;
+      } else {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Location needed',
+            'Allow location so we can show the emergency number for your area. You can still dial 112 (international) manually.'
+          );
+          setEmergencyLoading(false);
+          return;
+        }
+        const loc = await Location.getCurrentPositionAsync({});
+        lat = loc.coords.latitude;
+        lon = loc.coords.longitude;
+      }
+      const { number, label } = await getEmergencyNumber(lat, lon);
+      const url = `tel:${number}`;
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Call emergency', `${label}: ${number}. Open your phone and dial this number.`);
+      }
+    } catch (e) {
+      Alert.alert('Emergency', (e as Error).message);
+    } finally {
+      setEmergencyLoading(false);
+    }
+  }, []);
 
   const send = useCallback(async () => {
     const trimmed = message.trim();
@@ -55,6 +123,9 @@ export default function AssistantScreen() {
       }
       const res = await askAssistant(body);
       setReply(res.reply);
+      if (res.suggest_emergency_call && body.latitude != null && body.longitude != null) {
+        setCriticalLocation({ lat: body.latitude, lon: body.longitude });
+      }
     } catch (e) {
       Alert.alert('Assistant', (e as Error).message);
     } finally {
@@ -74,6 +145,23 @@ export default function AssistantScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {criticalLocation ? (
+          <View style={[styles.criticalBanner, { backgroundColor: colors.error }]}>
+            <Text style={styles.criticalBannerTitle}>Critical risk — Call emergency now</Text>
+            <TouchableOpacity
+              style={styles.criticalBannerButton}
+              onPress={() => callEmergency(criticalLocation)}
+              disabled={emergencyLoading}
+              activeOpacity={0.9}
+            >
+              {emergencyLoading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.criticalBannerButtonText}>Call emergency</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : null}
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
           <Text style={[styles.title, { color: colors.text }]}>
             Flood assistant
@@ -133,6 +221,19 @@ export default function AssistantScreen() {
               <Text style={styles.buttonText}>Ask assistant</Text>
             )}
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.buttonEmergency, { backgroundColor: colors.error }]}
+            onPress={() => callEmergency()}
+            disabled={emergencyLoading}
+            activeOpacity={0.85}
+          >
+            {emergencyLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Call emergency (by area)</Text>
+            )}
+          </TouchableOpacity>
         </View>
 
         {reply ? (
@@ -165,6 +266,32 @@ const styles = StyleSheet.create({
     maxWidth: CONTENT_MAX_WIDTH,
     width: '100%',
     alignSelf: 'center',
+  },
+  criticalBanner: {
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+    alignItems: 'center',
+  },
+  criticalBannerTitle: {
+    color: '#fff',
+    fontSize: FontSize.base,
+    fontWeight: FontWeight.bold,
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  criticalBannerButton: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingVertical: Spacing.sm + 2,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+    minWidth: 160,
+    alignItems: 'center',
+  },
+  criticalBannerButtonText: {
+    color: '#fff',
+    fontSize: FontSize.base,
+    fontWeight: FontWeight.semibold,
   },
   card: {
     borderRadius: Radius.lg,
@@ -224,6 +351,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: FontSize.base,
     fontWeight: FontWeight.semibold,
+  },
+  buttonEmergency: {
+    marginTop: Spacing.sm,
   },
   replyCard: {
     marginTop: Spacing.sm,

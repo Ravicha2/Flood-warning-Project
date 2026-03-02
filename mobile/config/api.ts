@@ -15,4 +15,5 @@ export const API_ENDPOINTS = {
   predictions: '/predictions/predictions',
   evacuationRoutes: '/evacuation/evacuation-routes',
   assistantAsk: '/assistant/ask',
+  emergencyNumber: '/assistant/emergency-number',
 } as const;
