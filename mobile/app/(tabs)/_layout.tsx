@@ -21,11 +21,11 @@ export default function DrawerLayout() {
         },
         header: () => <NavBarHeader />,
         headerStyle: {
-          backgroundColor: colors.primary,
+          backgroundColor: colors.background,
           elevation: 0,
           shadowOpacity: 0,
         },
-        headerTintColor: '#fff',
+        headerTintColor: colors.text,
         headerTitleStyle: {
           fontSize: FontSize.lg,
           fontWeight: FontWeight.semibold,

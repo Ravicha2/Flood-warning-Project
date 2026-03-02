@@ -15,6 +15,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useNavigation } from 'expo-router';
+import { DrawerActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -46,8 +47,7 @@ export function NavBarHeader() {
   const searchInputRef = useRef<TextInput>(null);
 
   const openDrawer = () => {
-    const drawer = navigation.getParent();
-    if (drawer && 'openDrawer' in drawer) (drawer as { openDrawer: () => void }).openDrawer();
+    navigation.dispatch(DrawerActions.openDrawer());
   };
 
   const filteredPresets = useMemo(() => {
@@ -83,7 +83,9 @@ export function NavBarHeader() {
           style={[
             styles.container,
             {
-              backgroundColor: colors.primary,
+              backgroundColor: colors.background,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
               paddingTop: topPadding,
               height: totalHeaderHeight,
               paddingHorizontal: Spacing.sm,
@@ -96,20 +98,20 @@ export function NavBarHeader() {
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             activeOpacity={0.8}
           >
-            <Ionicons name="menu" size={scale(24)} color="#fff" />
+            <Ionicons name="menu" size={scale(24)} color={colors.text} />
           </TouchableOpacity>
 
-          <View style={[styles.searchWrap, { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: Radius.md }]}>
-            <Ionicons name="search" size={scale(18)} color="rgba(255,255,255,0.9)" style={styles.searchIcon} />
+          <View style={[styles.searchWrap, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: Radius.md }]}>
+            <Ionicons name="search" size={scale(18)} color={colors.textMuted} style={styles.searchIcon} />
             <TextInput
               ref={searchInputRef}
-              style={[styles.searchInput, { color: '#fff', fontSize: FontSize.sm }]}
+              style={[styles.searchInput, { color: colors.text, fontSize: FontSize.sm }]}
               value={searchQuery}
               onChangeText={setSearchQuery}
               onFocus={() => setLocationDropdownVisible(true)}
               onBlur={() => setTimeout(() => setLocationDropdownVisible(false), 150)}
               placeholder="Search location (Queensland, Sumatra, Hat Yai)"
-              placeholderTextColor="rgba(255,255,255,0.6)"
+              placeholderTextColor={colors.textMuted}
               returnKeyType="search"
             />
           </View>
@@ -121,7 +123,7 @@ export function NavBarHeader() {
             activeOpacity={0.8}
             accessibilityLabel={`Map style: ${MAP_STYLE_LABELS[mapStyleKey]}. Tap to choose.`}
           >
-            <Ionicons name="layers-outline" size={scale(22)} color="#fff" />
+            <Ionicons name="layers-outline" size={scale(22)} color={colors.text} />
           </TouchableOpacity>
         </View>
 
