@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Flood Warning",
+    "slug": "flood-warning-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "floodwarning",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.floodwarning.mobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app uses your location to check flood risk and show nearby sensors.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses your location to check flood risk and show evacuation routes."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0d47a1"
+      },
+      "package": "com.floodwarning.mobile",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "This app uses your location to check flood risk and show nearby sensors."
+        }
+      ]
+    ]
+  }
+}
