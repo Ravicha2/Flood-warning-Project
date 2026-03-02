@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Elasticsearch index pattern for flood boundaries
-BOUNDARIES_INDEX = "flood-boundaries-*"
+BOUNDARIES_INDEX = "flood-discharge-*"
 
 
 @router.get(
@@ -39,6 +39,16 @@ async def get_flood_boundaries(
             "Example: 2024-01-15T06:00:00Z"
         ),
     ),
+    lat: float | None = Query(
+        default=None,
+        ge=-90, le=90,
+        description="Filter boundaries by geo_distance (requires lon)"
+    ),
+    lon: float | None = Query(
+        default=None,
+        ge=-180, le=180,
+        description="Filter boundaries by geo_distance (requires lat)"
+    ),
     es: AsyncElasticsearch = Depends(get_es_client),
 ):
     """
@@ -51,13 +61,21 @@ async def get_flood_boundaries(
     """
     must_filters = []
 
-    # Filter active boundaries only
-    if active_only:
-        must_filters.append({"term": {"active": True}})
+    # Active boundary filter is not relevant for live flood discharge
+    # but we will sort by timestamp to get the newest
 
     # Optional country filter
     if country:
         must_filters.append({"term": {"country": country.upper()}})
+
+    # Optional local radius search
+    if lat is not None and lon is not None:
+        must_filters.append({
+            "geo_distance": {
+                "distance": "50km",
+                "location": {"lat": lat, "lon": lon},
+            }
+        })
 
     # Optional time-scoped filter: boundary must be valid at the given moment
     if at_time:
@@ -75,9 +93,14 @@ async def get_flood_boundaries(
     }
 
     try:
+        # Get the latest 10000 documents (ES max default) to handle dense regional grids
         result = await es.search(
             index=BOUNDARIES_INDEX,
-            body={"query": query, "size": 500},  # 500 max boundaries per request
+            body={
+                "query": query,
+                "size": 10000,
+                "sort": [{"timestamp": {"order": "desc"}}]
+            },
         )
     except Exception as exc:
         logger.error("ES boundaries query failed: %s", exc)
@@ -92,16 +115,16 @@ async def get_flood_boundaries(
         try:
             boundaries.append(
                 FloodBoundaryItem(
-                    boundary_id=src.get("boundary_id", hit["_id"]),
-                    region_name=src.get("region_name", "Unknown"),
+                    boundary_id=hit["_id"],
+                    region_name=src.get("region", "Unknown").replace("_", " ").title(),
                     country=src.get("country", ""),
                     risk_level=src.get("risk_level", "low"),
-                    severity=float(src.get("severity", 0.0)),
-                    active=src.get("active", False),
-                    valid_from=src.get("valid_from"),
-                    valid_until=src.get("valid_until"),
+                    severity=float(src.get("river_discharge_m3s", 0.0)),
+                    active=True,
+                    valid_from=src.get("timestamp"),
+                    valid_until=None, # Live data has no specific end time
                     # Return the raw GeoJSON geometry dict for the mobile map
-                    geometry=src.get("flood_boundary", {}),
+                    geometry=src.get("grid_cell", {}),
                 )
             )
         except Exception as mapping_err:

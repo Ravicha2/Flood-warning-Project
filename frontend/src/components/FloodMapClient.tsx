@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Polygon, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Marker, Popup, Polyline, useMap, Pane } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -65,42 +65,44 @@ export default function FloodMapClient({
           </Marker>
         )}
 
-        {boundaries.map((b) => {
-          // Geometry is typically GeoJSON polygon: { type: "Polygon", coordinates: [[[lon, lat], ...]] }
-          const isPolygon = b.geometry?.type === 'Polygon';
-          const isMultiPolygon = b.geometry?.type === 'MultiPolygon';
-          
-          let latlngs: any[] = [];
-          if (isPolygon && b.geometry.coordinates?.length) {
-            latlngs = b.geometry.coordinates[0].map((coord: number[]) => [coord[1], coord[0]]);
-          } else if (isMultiPolygon && b.geometry.coordinates?.length) {
-             latlngs = b.geometry.coordinates.map((poly: any[]) => poly[0].map((coord: number[]) => [coord[1], coord[0]]));
-          }
+        <Pane name="gridPane" style={{ zIndex: 650 }}>
+          {boundaries.map((b) => {
+            // Geometry is typically GeoJSON polygon: { type: "Polygon", coordinates: [[[lon, lat], ...]] }
+            const isPolygon = b.geometry?.type === 'Polygon';
+            const isMultiPolygon = b.geometry?.type === 'MultiPolygon';
 
-          if (latlngs.length === 0) return null;
+            let latlngs: any[] = [];
+            if (isPolygon && b.geometry.coordinates?.length) {
+              latlngs = b.geometry.coordinates[0].map((coord: number[]) => [coord[1], coord[0]]);
+            } else if (isMultiPolygon && b.geometry.coordinates?.length) {
+              latlngs = b.geometry.coordinates.map((poly: any[]) => poly[0].map((coord: number[]) => [coord[1], coord[0]]));
+            }
 
-          const color = b.risk_level === 'high' || b.risk_level === 'critical' ? 'red' : b.risk_level === 'medium' ? 'orange' : 'green';
+            if (latlngs.length === 0) return null;
 
-          return (
-            <Polygon key={b.boundary_id} positions={latlngs} pathOptions={{ color, fillColor: color, fillOpacity: 0.3 }}>
-              <Popup>
-                <strong>{b.region_name}</strong><br/>
-                Level: {b.risk_level} ({b.severity})
-              </Popup>
-            </Polygon>
-          );
-        })}
+            const color = b.risk_level === 'high' || b.risk_level === 'critical' ? 'red' : b.risk_level === 'medium' ? 'orange' : 'green';
+
+            return (
+              <Polygon key={b.boundary_id} positions={latlngs} pathOptions={{ color, fillColor: color, fillOpacity: 0.3 }}>
+                <Popup pane="popupPane">
+                  <strong>{b.region_name}</strong><br />
+                  Level: {b.risk_level} ({b.severity})
+                </Popup>
+              </Polygon>
+            );
+          })}
+        </Pane>
 
         {route && route.waypoints.length > 0 && (
-          <Polyline 
-            positions={route.waypoints.map(w => [w.lat, w.lon])} 
-            pathOptions={{ color: 'blue', weight: 4, dashArray: '5, 10' }} 
+          <Polyline
+            positions={route.waypoints.map(w => [w.lat, w.lon])}
+            pathOptions={{ color: 'blue', weight: 4, dashArray: '5, 10' }}
           />
         )}
 
         {predictions.map((p) => {
           const color = p.predicted_risk_level === 'high' || p.predicted_risk_level === 'critical' ? 'red' : p.predicted_risk_level === 'medium' ? 'orange' : 'green';
-          
+
           const icon = L.divIcon({
             className: 'custom-div-icon',
             html: `<div style="background-color: ${color}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>`,
@@ -111,8 +113,8 @@ export default function FloodMapClient({
           return (
             <Marker key={p.prediction_id} position={[p.latitude, p.longitude]} icon={icon}>
               <Popup>
-                <strong>Sensor: {p.sensor_id}</strong><br/>
-                Risk: {p.predicted_risk_level}<br/>
+                <strong>Sensor: {p.sensor_id}</strong><br />
+                Risk: {p.predicted_risk_level}<br />
                 Water Level: {p.predicted_water_level}m
               </Popup>
             </Marker>
@@ -129,8 +131,8 @@ export default function FloodMapClient({
             })}
           >
             <Popup>
-              <strong>Open-Meteo GloFAS</strong><br/>
-              Nearest River Discharge Forecast:<br/>
+              <strong>Open-Meteo GloFAS</strong><br />
+              Nearest River Discharge Forecast:<br />
               <ul className="mt-1 space-y-1">
                 {riverDischargeData.time.slice(0, 3).map((t, idx) => (
                   <li key={t} className="text-sm">
