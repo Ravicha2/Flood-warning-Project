@@ -34,12 +34,19 @@ export default function CheckRiskPage() {
       </div>
 
       <div className="glass-panel rounded-2xl p-1 md:p-2">
-        <LocationSearch onSearch={handleSearch} isLoading={loading} />
+        <LocationSearch onSearch={handleSearch} />
       </div>
 
       {error && (
         <div className="animate-in fade-in zoom-in-95 bg-red-50/80 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-4 rounded-xl border border-red-200 dark:border-red-800/50 backdrop-blur-sm -mt-2">
           {error}
+        </div>
+      )}
+
+      {loading && (
+        <div className="glass-panel p-8 rounded-2xl flex flex-col items-center justify-center space-y-4 animate-pulse">
+          <div className="w-12 h-12 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin dark:border-brand-800 dark:border-t-brand-400" />
+          <p className="text-brand-600 dark:text-brand-400 font-bold tracking-widest text-sm uppercase">Analyzing Flood Data...</p>
         </div>
       )}
 

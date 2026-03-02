@@ -25,9 +25,10 @@ export const TypewriterText = ({
 
     if (isDeleting) {
       if (currentText === '') {
-        setIsDeleting(false);
-        setCurrentTextIndex((prev) => (prev + 1) % texts.length);
-        timeout = setTimeout(() => {}, 500);
+        timeout = setTimeout(() => {
+          setIsDeleting(false);
+          setCurrentTextIndex((prev) => (prev + 1) % texts.length);
+        }, 500);
       } else {
         timeout = setTimeout(() => {
           setCurrentText((prev) => prev.slice(0, -1));
