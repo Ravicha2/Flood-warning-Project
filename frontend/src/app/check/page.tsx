@@ -33,7 +33,7 @@ export default function CheckRiskPage() {
         <p className="text-lg text-brand-800/80 dark:text-brand-300/80">Enter coordinates or use your location to instantly evaluate flood risks in your area.</p>
       </div>
 
-      <div className="glass-panel rounded-2xl p-1 md:p-2">
+      <div className="glass-panel rounded-2xl p-1 md:p-2 relative z-50">
         <LocationSearch onSearch={handleSearch} />
       </div>
 
