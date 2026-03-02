@@ -1,4 +1,6 @@
 .env
+.env.local
+.env.*.local
 env
 .DS_Store
 
@@ -11,21 +13,24 @@ frontend/.env*.local
 frontend/.turbo/
 frontend/coverage/
 
-# Mobile app ignores
+# Mobile (Expo / React Native)
 mobile/node_modules/
-mobile/ios/
-mobile/android/
 mobile/.expo/
 mobile/dist/
+mobile/web-build/
 mobile/build/
 mobile/coverage/
 mobile/.env*.local
+*.orig
 
-# Python backend (optional additions)
+# Python backend
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 backend/venv/
 backend/.venv/
 .pytest_cache/
-**__pycache__**
+*.egg-info/
+*.egg
+.mypy_cache/

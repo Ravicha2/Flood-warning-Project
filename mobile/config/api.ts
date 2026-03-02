@@ -14,4 +14,5 @@ export const API_ENDPOINTS = {
   floodBoundaries: '/boundaries/flood-boundaries',
   predictions: '/predictions/predictions',
   evacuationRoutes: '/evacuation/evacuation-routes',
+  assistantAsk: '/assistant/ask',
 } as const;

@@ -15,6 +15,8 @@ import type {
   FloodBoundariesResponse,
   PredictionsResponse,
   EvacuationRouteResponse,
+  AssistantAskRequest,
+  AssistantAskResponse,
 } from '../types/api';
 
 const API_BASE_KEY = '@flood_warning_api_base_url';
@@ -108,4 +110,12 @@ export async function getEvacuationRoutes(lat: number, lon: number): Promise<Eva
   return request<EvacuationRouteResponse>(
     `${API_ENDPOINTS.evacuationRoutes}?lat=${lat}&lon=${lon}`
   );
+}
+
+/** POST /assistant/ask — ask Claude flood assistant (optional lat/lon for context) */
+export async function askAssistant(body: AssistantAskRequest): Promise<AssistantAskResponse> {
+  return request<AssistantAskResponse>(API_ENDPOINTS.assistantAsk, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }

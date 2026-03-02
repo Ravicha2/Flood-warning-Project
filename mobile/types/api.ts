@@ -79,3 +79,13 @@ export interface HealthResponse {
   elasticsearch: string;
   mongodb: string;
 }
+
+export interface AssistantAskRequest {
+  message: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface AssistantAskResponse {
+  reply: string;
+}
