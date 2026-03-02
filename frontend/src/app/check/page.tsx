@@ -55,7 +55,7 @@ export default function CheckRiskPage() {
           <RiskAlert level={result.risk_level} message={result.message} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {result.water_level_m !== undefined && (
+            {typeof result.water_level_m === 'number' && (
               <div className="glass-panel p-5 rounded-2xl flex items-start hover-lift shadow-brand-900/5 dark:shadow-brand-500/10">
                 <div className="bg-brand-100 dark:bg-brand-900/50 p-3 rounded-xl mr-4 mt-1 border border-brand-200 dark:border-brand-800 shadow-inner">
                   <MapPin className="w-6 h-6 text-brand-600 dark:text-brand-400" />
