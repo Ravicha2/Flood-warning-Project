@@ -11,6 +11,16 @@ frontend/.env*.local
 frontend/.turbo/
 frontend/coverage/
 
+# Mobile app ignores
+mobile/node_modules/
+mobile/ios/
+mobile/android/
+mobile/.expo/
+mobile/dist/
+mobile/build/
+mobile/coverage/
+mobile/.env*.local
+
 # Python backend (optional additions)
 __pycache__/
 *.py[cod]
@@ -18,3 +28,4 @@ __pycache__/
 backend/venv/
 backend/.venv/
 .pytest_cache/
+**__pycache__**
