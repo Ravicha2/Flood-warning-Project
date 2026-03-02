@@ -18,10 +18,14 @@ mobile/node_modules/
 mobile/.expo/
 mobile/dist/
 mobile/web-build/
+mobile/build/
+mobile/coverage/
+mobile/.env*.local
 *.orig
 
 # Python backend
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 backend/venv/

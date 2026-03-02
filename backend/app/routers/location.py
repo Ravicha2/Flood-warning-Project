@@ -116,7 +116,7 @@ async def _query_nearest_sensor(
 
 
 async def _query_predictions(
-    es: AsyncElasticsearch, lat: float, lon: float, radius_km: float
+    es: AsyncElasticsearch, lat: float, lon: float, radius_km: float, at_time: str | None = None
 ) -> str | None:
     """
     Geo-distance + time-range query: find the nearest prediction for this
@@ -125,7 +125,10 @@ async def _query_predictions(
     Returns:
         ISO8601 string of earliest predicted flood time, or None.
     """
-    now = datetime.now(timezone.utc)
+    if at_time:
+        now = datetime.fromisoformat(at_time.replace("Z", "+00:00"))
+    else:
+        now = datetime.now(timezone.utc)
     in_6h = now + timedelta(hours=6)
 
     query = {
@@ -189,7 +192,7 @@ async def check_location(
         boundaries_result, sensor_result, prediction_time = await asyncio.gather(
             _query_boundaries(es, lat, lon),
             _query_nearest_sensor(es, lat, lon, radius_km),
-            _query_predictions(es, lat, lon, radius_km),
+            _query_predictions(es, lat, lon, radius_km, payload.at_time),
             return_exceptions=True,
         )
     except Exception as exc:

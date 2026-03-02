@@ -19,6 +19,7 @@ interface FloodMapProps {
   route?: RouteResponse;
   predictions?: Prediction[];
   userLocation?: [number, number];
+  riverDischargeData?: any;
 }
 
 export default function FloodMap(props: FloodMapProps) {

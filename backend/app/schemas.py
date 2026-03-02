@@ -36,6 +36,7 @@ class LocationCheckRequest(BaseModel):
     latitude:  float = Field(..., ge=-90,  le=90, description="GPS latitude")
     longitude: float = Field(..., ge=-180, le=180, description="GPS longitude")
     radius_km: float = Field(default=50.0, gt=0, le=100, description="Search radius in km")
+    at_time:   Optional[str] = Field(None, description="ISO8601 timestamp for time-traveling (demo)")
 
     model_config = {
         "json_schema_extra": {
