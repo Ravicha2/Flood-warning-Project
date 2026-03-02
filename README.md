@@ -8,7 +8,7 @@ Traditional flood warnings operate at regional scale (district/province level), 
 
 ## Architecture
 
-```
+```ini
 Weather APIs ─┐
 Sensor Data  ─┼──► Logstash ──► Elasticsearch ──► FastAPI ──► Next.js
 Satellite    ─┘         ▲              │
@@ -31,8 +31,8 @@ Satellite    ─┘         ▲              │
 
 ## Project Structure
 
-```
-hackathon/
+```ini
+Flood-warning/
 ├── docker-compose.yml        ← Elastic Stack + MongoDB
 ├── .env.example              ← Copy to .env and fill API keys
 │
@@ -76,6 +76,7 @@ hackathon/
 ## Quick Start
 
 ### Prerequisites
+
 - Docker & Docker Compose
 - Python 3.11+
 - Node.js 18+
@@ -90,12 +91,14 @@ docker-compose up -d
 ```
 
 Verify:
+
 - Elasticsearch: http://localhost:9200
 - Kibana: http://localhost:5601
 
 ### 2. Apply Index Templates & Seed Data
 
 Open Kibana Dev Tools (http://localhost:5601/app/dev_tools#/console) and paste the contents of:
+
 - `elasticsearch/index-templates.ndjson`
 - `elasticsearch/seed-data.ndjson`
 
@@ -133,6 +136,7 @@ App: http://localhost:3000
 | `GET`  | `/health` | Service health check |
 
 **Example — check location:**
+
 ```bash
 curl -X POST http://localhost:8000/location/check-location \
   -H "Content-Type: application/json" \
@@ -142,12 +146,14 @@ curl -X POST http://localhost:8000/location/check-location \
 ## Key Elasticsearch Queries
 
 ### geo_distance — nearest sensors
+
 ```json
 GET flood-sensors-*/_search
 { "query": { "geo_distance": { "distance": "50km", "location": { "lat": 7.0086, "lon": 100.4747 } } } }
 ```
 
 ### geo_shape intersect — is this point in a flood zone?
+
 ```json
 GET flood-boundaries-*/_search
 { "query": { "geo_shape": { "flood_boundary": { "shape": { "type": "Point", "coordinates": [153.0251, -27.4698] }, "relation": "intersects" } } } }
@@ -183,7 +189,9 @@ GET flood-boundaries-*/_search
 - [ ] End-to-end demo rehearsed
 
 ## Team
+
 <!-- TODO: add team members and roles -->
 
 ## License
+
 MIT

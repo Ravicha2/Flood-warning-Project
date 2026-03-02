@@ -1,32 +1,242 @@
 """
-Router — POST /check-location
-Accepts lat/lon and returns flood risk assessment for that point.
+Router — POST /location/check-location
+Accepts a lat/lon from the mobile app and returns a flood risk assessment.
+
+Query strategy (all run against Elasticsearch):
+  1. geo_shape intersect  → which active flood boundaries contain this point?
+  2. geo_distance         → what is the nearest sensor and its reading?
+  3. geo_distance + range → are there any predictions for this location in the next 6 h?
+
+Risk priority: boundary-overlap risk > sensor risk_level > "low"
 """
 
-from fastapi import APIRouter, Depends
-from app.schemas import LocationCheckRequest, LocationCheckResponse
+import logging
+import asyncio
+from datetime import datetime, timezone, timedelta
+from fastapi import APIRouter, Depends, HTTPException
+from app.schemas import LocationCheckRequest, LocationCheckResponse, RiskLevel
 from app.db.elasticsearch import get_es_client
+from elasticsearch import AsyncElasticsearch
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# ----- Risk level ordering (higher index = higher severity) ----------------
+RISK_ORDER = ["low", "medium", "high", "critical"]
 
-@router.post("/check-location", response_model=LocationCheckResponse)
+
+def _max_risk(*levels: str | None) -> str:
+    """Return the highest severity risk level from a set of optional strings."""
+    best = "low"
+    for lvl in levels:
+        if lvl and lvl in RISK_ORDER:
+            if RISK_ORDER.index(lvl) > RISK_ORDER.index(best):
+                best = lvl
+    return best
+
+
+# ---------------------------------------------------------------------------
+async def _query_boundaries(es: AsyncElasticsearch, lat: float, lon: float) -> tuple[list[str], str]:
+    """
+    Geo-shape intersect query: find all active flood boundaries that contain
+    the given point.
+
+    Returns:
+        (list_of_boundary_ids_or_names, highest_risk_level_from_boundaries)
+    """
+    query = {
+        "bool": {
+            "filter": [
+                {"term": {"active": True}},
+                {
+                    "geo_shape": {
+                        "flood_boundary": {
+                            "shape": {
+                                "type": "Point",
+                                "coordinates": [lon, lat],  # GeoJSON: [lon, lat]
+                            },
+                            "relation": "intersects",
+                        }
+                    }
+                },
+            ]
+        }
+    }
+    result = await es.search(index="flood-boundaries-*", body={"query": query, "size": 20})
+    hits = result["hits"]["hits"]
+
+    boundary_ids: list[str] = []
+    risk_from_boundaries = "low"
+    for hit in hits:
+        src = hit["_source"]
+        boundary_ids.append(src.get("boundary_id") or src.get("region_name", hit["_id"]))
+        risk_from_boundaries = _max_risk(risk_from_boundaries, src.get("risk_level"))
+
+    return boundary_ids, risk_from_boundaries
+
+
+async def _query_nearest_sensor(
+    es: AsyncElasticsearch, lat: float, lon: float, radius_km: float
+) -> tuple[str | None, float | None, str]:
+    """
+    Geo-distance query: find the nearest sensor within radius_km.
+
+    Returns:
+        (sensor_id, water_level_m, risk_level)
+    """
+    query = {
+        "bool": {
+            "filter": [
+                {
+                    "geo_distance": {
+                        "distance": f"{radius_km}km",
+                        "location": {"lat": lat, "lon": lon},
+                    }
+                }
+            ]
+        }
+    }
+    sort = [
+        {"_geo_distance": {"location": {"lat": lat, "lon": lon}, "order": "asc", "unit": "km"}}
+    ]
+    result = await es.search(
+        index="flood-sensors-*",
+        body={"query": query, "sort": sort, "size": 1},
+    )
+    hits = result["hits"]["hits"]
+    if not hits:
+        return None, None, "low"
+
+    src = hits[0]["_source"]
+    return (
+        src.get("sensor_id"),
+        src.get("water_level"),
+        src.get("risk_level", "low"),
+    )
+
+
+async def _query_predictions(
+    es: AsyncElasticsearch, lat: float, lon: float, radius_km: float
+) -> str | None:
+    """
+    Geo-distance + time-range query: find the nearest prediction for this
+    location in the next 6 hours.
+
+    Returns:
+        ISO8601 string of earliest predicted flood time, or None.
+    """
+    now = datetime.now(timezone.utc)
+    in_6h = now + timedelta(hours=6)
+
+    query = {
+        "bool": {
+            "filter": [
+                {
+                    "geo_distance": {
+                        "distance": f"{radius_km}km",
+                        "location": {"lat": lat, "lon": lon},
+                    }
+                },
+                {
+                    "range": {
+                        "predicted_for": {
+                            "gte": now.isoformat(),
+                            "lte": in_6h.isoformat(),
+                        }
+                    }
+                },
+            ]
+        }
+    }
+    sort = [
+        {"predicted_for": {"order": "asc"}},
+        {"confidence_score": {"order": "desc"}},
+    ]
+    result = await es.search(
+        index="flood-predictions-*",
+        body={"query": query, "sort": sort, "size": 1},
+    )
+    hits = result["hits"]["hits"]
+    if not hits:
+        return None
+    return hits[0]["_source"].get("predicted_for")
+
+
+# ---------------------------------------------------------------------------
+@router.post(
+    "/check-location",
+    response_model=LocationCheckResponse,
+    summary="Check flood risk for a GPS coordinate",
+)
 async def check_location(
     payload: LocationCheckRequest,
-    es=Depends(get_es_client),
+    es: AsyncElasticsearch = Depends(get_es_client),
 ):
     """
-    Check flood risk for a specific coordinate.
-
-    Steps to implement:
-    1. Query flood-boundaries-* with geo_shape intersect to find active boundaries
-    2. Query flood-sensors-* with geo_distance to find nearest sensor
-    3. Query flood-predictions-* for forecast at this location
-    4. Combine results into a RiskLevel assessment
-    5. (Optional) Call evacuation router to compute safe route
+    Mobile 'Check Risk' button — send device lat/lon, receive:
+      - risk_level       : low | medium | high | critical
+      - nearest_sensor_id
+      - water_level_m
+      - active_boundaries: list of IDs/names of overlapping flood zones
+      - predicted_flood_time: earliest prediction ≤ 6 h out (if any)
     """
-    # TODO: implement Elasticsearch geo_shape query
-    # TODO: implement Elasticsearch geo_distance query
-    # TODO: compute risk_level from sensor + boundary overlap
-    # TODO: assemble and return LocationCheckResponse
-    raise NotImplementedError("check_location is not yet implemented")
+    lat = payload.latitude
+    lon = payload.longitude
+    radius_km = payload.radius_km
+
+    try:
+        # Run all three queries concurrently to keep latency low
+        boundaries_result, sensor_result, prediction_time = await asyncio.gather(
+            _query_boundaries(es, lat, lon),
+            _query_nearest_sensor(es, lat, lon, radius_km),
+            _query_predictions(es, lat, lon, radius_km),
+            return_exceptions=True,
+        )
+    except Exception as exc:
+        logger.error("check_location ES queries failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"Elasticsearch error: {exc}")
+
+    # Handle partial failures gracefully
+    active_boundaries: list[str] = []
+    risk_from_boundaries = "low"
+    if not isinstance(boundaries_result, Exception):
+        active_boundaries, risk_from_boundaries = boundaries_result
+
+    sensor_id: str | None = None
+    water_level: float | None = None
+    sensor_risk = "low"
+    if not isinstance(sensor_result, Exception):
+        sensor_id, water_level, sensor_risk = sensor_result
+
+    predicted_time: str | None = None
+    if not isinstance(prediction_time, Exception):
+        predicted_time = prediction_time
+
+    # Final risk: boundary overlap takes precedence over sensor reading
+    final_risk = _max_risk(risk_from_boundaries, sensor_risk)
+
+    # Build human-readable message
+    if final_risk == "low":
+        message = "No active flood risk detected at your location."
+    elif final_risk == "medium":
+        message = "Elevated flood risk detected. Monitor conditions closely."
+    elif final_risk == "high":
+        message = "High flood risk! Be prepared to evacuate."
+    else:
+        message = "CRITICAL flood risk! Evacuate immediately."
+
+    logger.info(
+        "check_location lat=%.4f lon=%.4f → risk=%s boundaries=%d sensor=%s",
+        lat, lon, final_risk, len(active_boundaries), sensor_id,
+    )
+
+    return LocationCheckResponse(
+        latitude=lat,
+        longitude=lon,
+        risk_level=RiskLevel(final_risk),
+        nearest_sensor_id=sensor_id,
+        water_level_m=water_level,
+        predicted_flood_time=predicted_time,
+        active_boundaries=active_boundaries,
+        message=message,
+    )
