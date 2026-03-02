@@ -47,6 +47,14 @@ class Settings(BaseSettings):
     enable_ml_predictions: bool = False
     enable_real_time_ingestion: bool = False
 
+    # ---- Assistant (Claude via Anthropic or Amazon Bedrock) ----
+    # Provider: "bedrock" (use AWS credentials) or "anthropic" (use ANTHROPIC_API_KEY)
+    assistant_provider: str = "bedrock"
+    anthropic_api_key: str = ""
+    assistant_model: str = "claude-3-5-haiku-20241022"
+    # Bedrock model ID (region-dependent; enable in AWS Console → Bedrock → Model access)
+    assistant_bedrock_model_id: str = "anthropic.claude-3-5-haiku-20241022-v1:0"
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS_ORIGINS env var into a list of origin strings."""

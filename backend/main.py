@@ -15,7 +15,7 @@ from app.db.elasticsearch import get_es_client, close_es_client, ping_elasticsea
 from app.db.mongodb import get_mongo_db, close_mongo_client, ping_mongodb
 
 # ---- Routers ---------------------------------------------------------------
-from app.routers import health, boundaries, location, predictions, evacuation
+from app.routers import health, boundaries, location, predictions, evacuation, assistant
 
 # ---- Logging setup ---------------------------------------------------------
 settings = get_settings()
@@ -120,6 +120,7 @@ app.include_router(boundaries.router,  prefix="/boundaries",  tags=["Boundaries"
 app.include_router(location.router,    prefix="/location",    tags=["Location"])
 app.include_router(predictions.router, prefix="/predictions", tags=["Predictions"])
 app.include_router(evacuation.router,  prefix="/evacuation",  tags=["Evacuation"])
+app.include_router(assistant.router,   prefix="/assistant",   tags=["Assistant"])
 
 
 # ---- Root ------------------------------------------------------------------
@@ -137,5 +138,6 @@ async def root():
             "location":    "/location/check-location",
             "predictions": "/predictions/predictions",
             "evacuation":  "/evacuation/evacuation-routes",
+            "assistant":   "/assistant/ask",
         },
     }
