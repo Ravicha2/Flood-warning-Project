@@ -19,6 +19,7 @@ function MapContent() {
   const [boundaries, setBoundaries] = useState<Boundary[]>([]);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [route, setRoute] = useState<RouteResponse | undefined>(undefined);
+  const [riverData, setRiverData] = useState<any | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -26,13 +27,31 @@ function MapContent() {
   const loadData = async (lat: number, lon: number, fetchRoute: boolean = false) => {
     setLoading(true);
     try {
-      // Load boundaries globally (or we could pass country)
+      // Load boundaries globally
       const bRes = await api.getFloodBoundaries({ active_only: true });
       setBoundaries(bRes.boundaries);
 
       // Load predictions
       const pRes = await api.getPredictions({ hours_ahead: 12 });
       setPredictions(pRes.predictions);
+
+      // Load Open-Meteo river discharge
+      try {
+        const meteoRes = await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${lat}&longitude=${lon}&daily=river_discharge&forecast_days=3`);
+        if (meteoRes.ok) {
+          const data = await meteoRes.json();
+          if (data && data.daily && data.daily.river_discharge) {
+            setRiverData({
+              latitude: data.latitude,
+              longitude: data.longitude,
+              time: data.daily.time,
+              river_discharge: data.daily.river_discharge,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch Open-Meteo flood data", err);
+      }
 
       if (fetchRoute) {
         try {
@@ -74,6 +93,7 @@ function MapContent() {
   const handleQuickGo = (lat: number, lon: number, z?: number) => {
     setCenter([lat, lon]);
     if (z) setZoom(z);
+    loadData(lat, lon, false); // Reload meteor data for new center
   };
 
   return (
@@ -119,6 +139,7 @@ function MapContent() {
           predictions={predictions}
           route={route}
           userLocation={getRoute ? [initialLat, initialLon] : undefined}
+          riverDischargeData={riverData}
         />
       </div>
     </div>

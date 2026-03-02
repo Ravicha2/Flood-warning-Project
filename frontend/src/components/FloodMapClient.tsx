@@ -24,6 +24,13 @@ function MapUpdater({ center, zoom }: { center: [number, number]; zoom?: number 
   return null;
 }
 
+export interface RiverDischargeData {
+  latitude: number;
+  longitude: number;
+  time: string[];
+  river_discharge: number[];
+}
+
 interface FloodMapClientProps {
   center: [number, number];
   zoom?: number;
@@ -31,6 +38,7 @@ interface FloodMapClientProps {
   route?: RouteResponse;
   predictions?: Prediction[];
   userLocation?: [number, number];
+  riverDischargeData?: RiverDischargeData | null;
 }
 
 export default function FloodMapClient({
@@ -40,6 +48,7 @@ export default function FloodMapClient({
   route,
   predictions = [],
   userLocation,
+  riverDischargeData,
 }: FloodMapClientProps) {
   return (
     <div className="h-[500px] w-full rounded-xl overflow-hidden shadow-md border border-gray-200 z-0 relative">
@@ -109,6 +118,29 @@ export default function FloodMapClient({
             </Marker>
           );
         })}
+        {riverDischargeData && riverDischargeData.river_discharge && riverDischargeData.river_discharge.length > 0 && (
+          <Marker
+            position={[riverDischargeData.latitude, riverDischargeData.longitude]}
+            icon={L.divIcon({
+              className: 'custom-div-icon',
+              html: `<div style="background-color: #3b82f6; width: 14px; height: 14px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+              iconSize: [14, 14],
+              iconAnchor: [7, 14]
+            })}
+          >
+            <Popup>
+              <strong>Open-Meteo GloFAS</strong><br/>
+              Nearest River Discharge Forecast:<br/>
+              <ul className="mt-1 space-y-1">
+                {riverDischargeData.time.slice(0, 3).map((t, idx) => (
+                  <li key={t} className="text-sm">
+                    {new Date(t).toLocaleDateString()}: <strong>{riverDischargeData.river_discharge[idx]} m³/s</strong>
+                  </li>
+                ))}
+              </ul>
+            </Popup>
+          </Marker>
+        )}
       </MapContainer>
     </div>
   );
