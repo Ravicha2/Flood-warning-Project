@@ -15,20 +15,23 @@ function MapContent() {
 
   const [center, setCenter] = useState<[number, number]>([initialLat, initialLon]);
   const [zoom, setZoom] = useState(10);
-  
+
   const [boundaries, setBoundaries] = useState<Boundary[]>([]);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [route, setRoute] = useState<RouteResponse | undefined>(undefined);
   const [riverData, setRiverData] = useState<any | null>(null);
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const loadData = async (lat: number, lon: number, fetchRoute: boolean = false) => {
     setLoading(true);
     try {
-      // Load boundaries globally
-      const bRes = await api.getFloodBoundaries({ active_only: true });
+      // 1. Trigger dynamic 0.1 deg grid seeding around the requested center point
+      await api.generateDynamicGrid(lat, lon);
+
+      // 2. Load globally active boundaries (filtered to 50km around the center so we only pull relevant grids)
+      const bRes = await api.getFloodBoundaries({ active_only: true, lat, lon });
       setBoundaries(bRes.boundaries);
 
       // Load predictions
@@ -77,9 +80,11 @@ function MapContent() {
     // Set up real-time polling every 30 seconds for dynamic data
     const intervalId = setInterval(async () => {
       try {
-        const bRes = await api.getFloodBoundaries({ active_only: true });
+        // Dynamic update using the CURRENT center
+        await api.generateDynamicGrid(center[0], center[1]);
+        const bRes = await api.getFloodBoundaries({ active_only: true, lat: center[0], lon: center[1] });
         setBoundaries(bRes.boundaries);
-        
+
         const pRes = await api.getPredictions({ hours_ahead: 12 });
         setPredictions(pRes.predictions);
       } catch (e) {
@@ -106,7 +111,7 @@ function MapContent() {
           </h1>
           <p className="text-brand-800/80 dark:text-brand-300/80 text-sm mt-1 font-medium">Real-time situational awareness and predictive routing.</p>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Quick view</span>
           <MapQuickGo onSelect={handleQuickGo} />
@@ -124,18 +129,18 @@ function MapContent() {
         {loading && (
           <div className="absolute inset-0 z-10 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md flex items-center justify-center">
             <div className="glass-panel w-full h-full rounded-2xl flex flex-col items-center justify-center border-brand-200 dark:border-brand-800/50">
-            <div className="relative">
-              <div className="absolute inset-0 bg-brand-400/20 rounded-full blur-xl animate-pulse" />
-              <MapPin className="w-12 h-12 text-brand-400/50 dark:text-brand-600/50 animate-bounce relative z-10" />
+              <div className="relative">
+                <div className="absolute inset-0 bg-brand-400/20 rounded-full blur-xl animate-pulse" />
+                <MapPin className="w-12 h-12 text-brand-400/50 dark:text-brand-600/50 animate-bounce relative z-10" />
+              </div>
+              <p className="mt-4 text-brand-600/70 dark:text-brand-400/80 font-medium tracking-widest text-sm uppercase">Initializing Satellites...</p>
             </div>
-            <p className="mt-4 text-brand-600/70 dark:text-brand-400/80 font-medium tracking-widest text-sm uppercase">Initializing Satellites...</p>
-          </div>
           </div>
         )}
-        <FloodMap 
-          center={center} 
-          zoom={zoom} 
-          boundaries={boundaries} 
+        <FloodMap
+          center={center}
+          zoom={zoom}
+          boundaries={boundaries}
           predictions={predictions}
           route={route}
           userLocation={getRoute ? [initialLat, initialLon] : undefined}

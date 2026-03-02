@@ -1,0 +1,118 @@
+# Elasticsearch Index Template — Flood Discharge Data
+# ============================================================
+# Run in Kibana Dev Tools Console:
+#   http://localhost:5601/app/dev_tools#/console
+#
+# This template supports rectangular geo_shape overlays on
+# Kibana Maps, with each rectangle representing a grid cell's
+# river discharge reading from the Open-Meteo Flood API.
+# ============================================================
+
+# ----------------------------------------------------------
+# 1. Create index template for flood-discharge-* pattern
+# ----------------------------------------------------------
+
+PUT _index_template/flood-discharge-template
+{
+  "index_patterns": ["flood-discharge-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "refresh_interval": "5s"
+    },
+    "mappings": {
+      "properties": {
+        "region": {
+          "type": "keyword"
+        },
+        "country": {
+          "type": "keyword"
+        },
+        "location": {
+          "type": "geo_point"
+        },
+        "grid_cell": {
+          "type": "geo_shape"
+        },
+        "river_discharge_m3s": {
+          "type": "float"
+        },
+        "risk_level": {
+          "type": "keyword"
+        },
+        "latitude": {
+          "type": "float"
+        },
+        "longitude": {
+          "type": "float"
+        },
+        "timestamp": {
+          "type": "date"
+        },
+        "ingested_at": {
+          "type": "date"
+        }
+      }
+    }
+  }
+}
+
+# ----------------------------------------------------------
+# 2. Verify
+# ----------------------------------------------------------
+
+GET _index_template/flood-discharge-template
+
+# ----------------------------------------------------------
+# 3. Test queries — paste into Dev Tools after data is loaded
+# ----------------------------------------------------------
+
+# 3a. Count documents
+GET flood-discharge-*/_count
+
+# 3b. Most recent documents
+GET flood-discharge-*/_search
+{
+  "size": 5,
+  "sort": [{ "timestamp": "desc" }]
+}
+
+# 3c. Filter by region
+GET flood-discharge-*/_search
+{
+  "query": {
+    "term": { "region": "queensland" }
+  },
+  "size": 5
+}
+
+# 3d. Geo bounding box — all discharge readings in Queensland
+GET flood-discharge-*/_search
+{
+  "query": {
+    "geo_bounding_box": {
+      "location": {
+        "top_left":     { "lat": -10.0, "lon": 138.0 },
+        "bottom_right": { "lat": -29.0, "lon": 154.0 }
+      }
+    }
+  },
+  "size": 20
+}
+
+# 3e. Geo shape intersect — find grid cells overlapping a point (Brisbane)
+GET flood-discharge-*/_search
+{
+  "query": {
+    "geo_shape": {
+      "grid_cell": {
+        "shape": {
+          "type": "Point",
+          "coordinates": [153.0, -27.5]
+        },
+        "relation": "intersects"
+      }
+    }
+  }
+}

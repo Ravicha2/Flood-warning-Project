@@ -50,7 +50,7 @@ async def _query_boundaries(es: AsyncElasticsearch, lat: float, lon: float) -> t
                 {"term": {"active": True}},
                 {
                     "geo_shape": {
-                        "flood_boundary": {
+                        "grid_cell": {
                             "shape": {
                                 "type": "Point",
                                 "coordinates": [lon, lat],  # GeoJSON: [lon, lat]
@@ -62,7 +62,7 @@ async def _query_boundaries(es: AsyncElasticsearch, lat: float, lon: float) -> t
             ]
         }
     }
-    result = await es.search(index="flood-boundaries-*", body={"query": query, "size": 20})
+    result = await es.search(index="flood-discharge-*", body={"query": query, "size": 20})
     hits = result["hits"]["hits"]
 
     boundary_ids: list[str] = []
@@ -70,7 +70,10 @@ async def _query_boundaries(es: AsyncElasticsearch, lat: float, lon: float) -> t
     first_country: str | None = None
     for hit in hits:
         src = hit["_source"]
-        boundary_ids.append(src.get("boundary_id") or src.get("region_name", hit["_id"]))
+        region = src.get("region", hit["_id"])
+        if isinstance(region, str):
+            region = region.replace("_", " ").title()
+        boundary_ids.append(region)
         risk_from_boundaries = _max_risk(risk_from_boundaries, src.get("risk_level"))
         if first_country is None and src.get("country"):
             first_country = (src.get("country") or "").strip().upper() or None
@@ -103,7 +106,7 @@ async def _query_nearest_sensor(
         {"_geo_distance": {"location": {"lat": lat, "lon": lon}, "order": "asc", "unit": "km"}}
     ]
     result = await es.search(
-        index="flood-sensors-*",
+        index="flood-discharge-*",
         body={"query": query, "sort": sort, "size": 1},
     )
     hits = result["hits"]["hits"]
@@ -112,8 +115,8 @@ async def _query_nearest_sensor(
 
     src = hits[0]["_source"]
     return (
-        src.get("sensor_id"),
-        src.get("water_level"),
+        src.get("region", "unknown_region").replace("_", " ").title() + " Grid",
+        float(src.get("river_discharge_m3s", 0.0)),
         src.get("risk_level", "low"),
     )
 

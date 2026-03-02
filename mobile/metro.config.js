@@ -14,6 +14,12 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       type: 'sourceFile',
     };
   }
+  if (platform === 'web' && (moduleName === 'react-native-gesture-handler' || moduleName.startsWith('react-native-gesture-handler/'))) {
+    return {
+      filePath: path.resolve(__dirname, 'react-native-gesture-handler-web-stub.js'),
+      type: 'sourceFile',
+    };
+  }
   if (originalResolveRequest) {
     return originalResolveRequest(context, moduleName, platform);
   }

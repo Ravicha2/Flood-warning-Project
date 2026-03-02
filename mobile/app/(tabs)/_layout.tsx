@@ -6,7 +6,7 @@ import { FontSize, FontWeight, scale } from '../../constants/Theme';
 import { useTheme } from '../../context/ThemeContext';
 import { checkLocation } from '../../services/api';
 
-export default function TabLayout() {
+export default function DrawerLayout() {
   const { colors } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
@@ -36,18 +36,19 @@ export default function TabLayout() {
   );
 
   return (
-    <Tabs
+    <Drawer
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textSecondary,
-        tabBarLabelStyle: { fontSize: FontSize.xs, fontWeight: FontWeight.medium },
-        tabBarStyle: {
+        drawerActiveTintColor: colors.primary,
+        drawerInactiveTintColor: colors.textSecondary,
+        drawerLabelStyle: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+        drawerStyle: {
           backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          paddingTop: scale(8),
-          minHeight: scale(60),
+          width: scale(280),
         },
+        drawerContentStyle: {
+          backgroundColor: colors.surface,
+        },
+        header: () => <NavBarHeader />,
         headerStyle: {
           backgroundColor: colors.primary,
           elevation: 0,
@@ -58,48 +59,49 @@ export default function TabLayout() {
           fontSize: FontSize.lg,
           fontWeight: FontWeight.semibold,
         },
+        swipeEdgeWidth: 50,
       }}
     >
-      <Tabs.Screen
+      <Drawer.Screen
         name="index"
         options={{
           title: 'Map',
-          tabBarLabel: 'Map',
-          tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />,
+          drawerLabel: 'Map',
+          drawerIcon: ({ color, size }: { color: string; size: number }) => <Ionicons name="map" size={size} color={color} />,
         }}
       />
-      <Tabs.Screen
+      <Drawer.Screen
         name="check-risk"
         options={{
           title: 'Check Risk',
-          tabBarLabel: 'Risk',
-          tabBarIcon: ({ color, size }) => <Ionicons name="warning" size={size} color={color} />,
+          drawerLabel: 'Risk',
+          drawerIcon: ({ color, size }: { color: string; size: number }) => <Ionicons name="warning" size={size} color={color} />,
         }}
       />
-      <Tabs.Screen
+      <Drawer.Screen
         name="predictions"
         options={{
           title: 'Predictions',
-          tabBarLabel: 'Predictions',
-          tabBarIcon: ({ color, size }) => <Ionicons name="list" size={size} color={color} />,
+          drawerLabel: 'Predictions',
+          drawerIcon: ({ color, size }: { color: string; size: number }) => <Ionicons name="list" size={size} color={color} />,
         }}
       />
-      <Tabs.Screen
+      <Drawer.Screen
         name="assistant"
         options={{
           title: 'Assistant',
-          tabBarLabel: 'Assistant',
-          tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-ellipses" size={size} color={color} />,
+          drawerLabel: 'Assistant',
+          drawerIcon: ({ color, size }: { color: string; size: number }) => <Ionicons name="chatbubble-ellipses" size={size} color={color} />,
         }}
       />
-      <Tabs.Screen
+      <Drawer.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarLabel: 'Settings',
-          tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
+          drawerLabel: 'Settings',
+          drawerIcon: ({ color, size }: { color: string; size: number }) => <Ionicons name="settings" size={size} color={color} />,
         }}
       />
-    </Tabs>
+    </Drawer>
   );
 }

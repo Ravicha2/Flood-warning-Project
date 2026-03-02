@@ -1,5 +1,4 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-export const DEMO_TIMESTAMP = "2024-01-15T06:00:00Z";
 
 export interface HealthResponse {
   elasticsearch: string;
@@ -17,6 +16,14 @@ export interface LocationCheckResponse {
   active_boundaries: string[];
   evacuation_route?: { lat: number; lon: number }[];
   message: string;
+}
+
+export interface GetBoundariesParams {
+  country?: string;
+  active_only?: boolean;
+  at_time?: string;
+  lat?: number;
+  lon?: number;
 }
 
 export interface Boundary {
@@ -72,17 +79,19 @@ export const api = {
     const res = await fetch(`${API_URL}/location/check-location`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ latitude: lat, longitude: lon, radius_km: radiusKm, at_time: atTime || DEMO_TIMESTAMP }),
+      body: JSON.stringify({ latitude: lat, longitude: lon, radius_km: radiusKm, at_time: atTime }),
     });
     if (!res.ok) throw new Error('Failed to check location');
     return res.json();
   },
 
-  async getFloodBoundaries(params?: { country?: string; active_only?: boolean; at_time?: string }): Promise<BoundariesResponse> {
+  async getFloodBoundaries(params?: GetBoundariesParams): Promise<BoundariesResponse> {
     const url = new URL(`${API_URL}/boundaries/flood-boundaries`);
     if (params?.country) url.searchParams.append('country', params.country);
     if (params?.active_only !== undefined) url.searchParams.append('active_only', String(params.active_only));
-    url.searchParams.append('at_time', params?.at_time || DEMO_TIMESTAMP);
+    if (params?.at_time) url.searchParams.append('at_time', params.at_time);
+    if (params?.lat) url.searchParams.append('lat', String(params.lat));
+    if (params?.lon) url.searchParams.append('lon', String(params.lon));
 
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error('Failed to fetch boundaries');
@@ -93,7 +102,7 @@ export const api = {
     const url = new URL(`${API_URL}/evacuation/evacuation-routes`);
     url.searchParams.append('lat', String(lat));
     url.searchParams.append('lon', String(lon));
-    url.searchParams.append('at_time', at_time || DEMO_TIMESTAMP);
+    if (at_time) url.searchParams.append('at_time', at_time);
 
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error('Failed to fetch evacuation routes');
@@ -106,10 +115,24 @@ export const api = {
     if (params?.lat) url.searchParams.append('lat', String(params.lat));
     if (params?.lon) url.searchParams.append('lon', String(params.lon));
     if (params?.radius_km) url.searchParams.append('radius_km', String(params.radius_km));
-    url.searchParams.append('at_time', params?.at_time || DEMO_TIMESTAMP);
+    if (params?.at_time) url.searchParams.append('at_time', params.at_time);
 
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error('Failed to fetch predictions');
+    return res.json();
+  },
+
+  async generateDynamicGrid(lat: number, lon: number): Promise<{ status: string }> {
+    const res = await fetch(`${API_URL}/ingest/generate-grid`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ latitude: lat, longitude: lon }),
+    });
+    // We intentionally don't throw an aggressive error here so map keeps working even if open-meteo fails
+    if (!res.ok) {
+      console.warn('Failed to dynamically generate grid for location', lat, lon);
+      return { status: 'failed' };
+    }
     return res.json();
   }
 };

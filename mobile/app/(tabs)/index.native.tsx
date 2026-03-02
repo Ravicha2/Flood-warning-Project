@@ -16,7 +16,7 @@ import {
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import { getFloodBoundaries, getPredictions, checkLocation } from '../../services/api';
-import { REGION_PRESETS } from '../../constants/Regions';
+import { useRegion } from '../../context/RegionContext';
 import { EMS_RASTER_TILE_URL } from '../../constants/ElasticMap';
 import { Colors, RiskLevelColors, Spacing, Radius, FontSize, FontWeight, Shadows } from '../../constants/Theme';
 import type { FloodBoundaryItem, PredictionItem, LocationCheckResponse } from '../../types/api';
@@ -85,6 +85,7 @@ function MapScreenWithMaps() {
   const [loading, setLoading] = useState(true);
   const [loadingRisk, setLoadingRisk] = useState(false);
   const [mapRef, setMapRef] = useState<unknown>(null);
+  const { presets, selectedPresetId } = useRegion();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -120,14 +121,18 @@ function MapScreenWithMaps() {
     })();
   }, []);
 
-  const flyToRegion = (preset: (typeof REGION_PRESETS)[0]) => {
-    mapRef?.animateToRegion({
+  // Fly to region when user selects a location from navbar search
+  useEffect(() => {
+    if (!mapRef || !selectedPresetId) return;
+    const preset = presets.find((p) => p.id === selectedPresetId);
+    if (!preset) return;
+    (mapRef as { animateToRegion: (r: object) => void }).animateToRegion({
       latitude: preset.latitude,
       longitude: preset.longitude,
       latitudeDelta: preset.latitudeDelta,
       longitudeDelta: preset.longitudeDelta,
     });
-  };
+  }, [selectedPresetId, presets, mapRef]);
 
   const checkRiskHere = useCallback(async (lat: number, lon: number) => {
     setLoadingRisk(true);
@@ -143,18 +148,6 @@ function MapScreenWithMaps() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.chips}>
-        {REGION_PRESETS.map((preset) => (
-          <TouchableOpacity
-            key={preset.id}
-            style={styles.chip}
-            onPress={() => flyToRegion(preset)}
-          >
-            <Text style={styles.chipText}>{preset.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       <MapView
         ref={setMapRef}
         style={styles.map}
@@ -271,26 +264,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
     marginTop: Spacing.md,
-  },
-  chips: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    gap: Spacing.sm,
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  chip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.full,
-  },
-  chipText: {
-    color: '#fff',
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
   },
   map: {
     flex: 1,
