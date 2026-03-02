@@ -52,8 +52,24 @@ function MapContent() {
   };
 
   useEffect(() => {
-    loadData(center[0], center[1], getRoute);
-  }, []);
+    // Initial load
+    loadData(initialLat, initialLon, getRoute);
+
+    // Set up real-time polling every 30 seconds for dynamic data
+    const intervalId = setInterval(async () => {
+      try {
+        const bRes = await api.getFloodBoundaries({ active_only: true });
+        setBoundaries(bRes.boundaries);
+        
+        const pRes = await api.getPredictions({ hours_ahead: 12 });
+        setPredictions(pRes.predictions);
+      } catch (e) {
+        console.error("Background polling failed", e);
+      }
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [initialLat, initialLon, getRoute]);
 
   const handleQuickGo = (lat: number, lon: number, z?: number) => {
     setCenter([lat, lon]);
