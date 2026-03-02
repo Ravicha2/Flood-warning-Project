@@ -45,8 +45,8 @@ export default function FloodMapClient({
     <div className="h-[500px] w-full rounded-xl overflow-hidden shadow-md border border-gray-200 z-0 relative">
       <MapContainer center={center} zoom={zoom} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.elastic.co/elastic-maps-service">Elastic Maps Service</a>'
+          url="https://tiles.maps.elastic.co/v2/default/{z}/{x}/{y}.png?elastic_tile_service_tos=agree&my_app_name=flood-warning"
         />
         <MapUpdater center={center} zoom={zoom} />
 
